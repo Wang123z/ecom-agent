@@ -47,11 +47,23 @@ def resolve_path(value: str) -> Path:
     return p if p.is_absolute() else config.BASE_DIR / p
 
 
-def build_dataset(cfg: dict, split: str):
+def render_text(tok, messages: list) -> str:
+    """渲染成训练文本，并剥掉 Qwen3 模板无条件插入的空思考块。
+
+    模板对每个历史 assistant 轮都会加 <think>\\n\\n</think>，
+    enable_thinking 只作用于生成提示，管不到这里。不剥离的话
+    模型会学成「先输出空思考块再回答」，推理时前端会看到 think 标签。
+    """
+    text = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+    return re.sub(r"<think>\s*</think>\s*", "", text)
+
+
+def build_dataset(cfg: dict, split: str, tok):
+    """直接产出 text 列，训练时不再走模板渲染。"""
     from datasets import Dataset
 
     rows = load_jsonl(resolve_path(cfg["data"][split]))
-    return Dataset.from_list([to_messages(r) for r in rows])
+    return Dataset.from_list([{"text": render_text(tok, to_messages(r)["messages"])} for r in rows])
 
 
 def dry_run(cfg: dict) -> None:
@@ -66,15 +78,10 @@ def dry_run(cfg: dict) -> None:
     train_rows = [to_messages(r) for r in load_jsonl(resolve_path(cfg["data"]["train"]))]
     val_rows = [to_messages(r) for r in load_jsonl(resolve_path(cfg["data"]["val"]))]
 
-    # 先渲染成文本再分词：tokenize=True 在新版 transformers 返回 dict，len() 会得到 2
-    def token_len(messages: list) -> int:
-        text = tok.apply_chat_template(messages, tokenize=False,
-                                       add_generation_prompt=False, enable_thinking=False)
-        return len(tok(text)["input_ids"])
-
-    lengths = sorted(token_len(r["messages"]) for r in train_rows[:200])
-    sample = tok.apply_chat_template(train_rows[0]["messages"], tokenize=False,
-                                     add_generation_prompt=False, enable_thinking=False)
+    # 只抽样 20 条统计长度：无卡模式内存配额小，全量渲染会被 OOM 杀掉
+    lengths = sorted(len(tok(render_text(tok, r["messages"]))["input_ids"])
+                     for r in train_rows[:20])
+    sample = render_text(tok, train_rows[0]["messages"])
 
     print(json.dumps({
         "train": len(train_rows),
@@ -136,8 +143,7 @@ def build_trainer(cfg: dict, out_dir: Path):
         max_length=cfg["model"]["max_length"],
         bf16=precision["bf16"], fp16=precision["fp16"],
         remove_unused_columns=False,
-        # 数据里没有推理过程，关掉 Qwen3 的思考块，避免训练出空的 <think>
-        chat_template_kwargs={"enable_thinking": False},
+        dataset_text_field="text",
     )
     allowed = set(inspect.signature(SFTConfig.__init__).parameters)
     args = SFTConfig(**{k: v for k, v in raw.items() if k in allowed})
@@ -148,8 +154,8 @@ def build_trainer(cfg: dict, out_dir: Path):
     )
     trainer = SFTTrainer(
         model=model, args=args,
-        train_dataset=build_dataset(cfg, "train"),
-        eval_dataset=build_dataset(cfg, "val"),
+        train_dataset=build_dataset(cfg, "train", tok),
+        eval_dataset=build_dataset(cfg, "val", tok),
         processing_class=tok, peft_config=peft_cfg,
     )
     return trainer, tok

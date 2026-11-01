@@ -47,7 +47,12 @@ def main() -> None:
 
     samples = [to_sample(f"s_{i:05d}", [(r["question"], r["answer"])]) for i, r in enumerate(rows)]
 
-    # 多轮：只取同簇内答案一致的簇，避免模型学到矛盾口径
+    # 手写多轮：覆盖查单追问、退款补参、投诉升级等真实流程
+    multi_path = config.DATA_DIR / "multi_turn.jsonl"
+    for row in load_jsonl(multi_path):
+        samples.append(to_sample(row["id"], [(t["user"], t["assistant"]) for t in row["turns"]]))
+
+    # 聚类多轮：同簇内答案一致的才能拼，避免学到矛盾口径
     usable = [c for c in clusters if c["size"] >= 2 and not c.get("conflict")]
     target = int(len(samples) * args.multi_ratio / max(1, args.max_turns - 1))
     for c in usable[:target]:

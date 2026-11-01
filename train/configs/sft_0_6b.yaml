@@ -1,0 +1,27 @@
+# 0.6B 冒烟配置：先用它验证数据、模板、显存占用，跑通再换 8B。
+model:
+  name: ${MODEL_DIR}/Qwen3-0.6B
+  max_length: 1024
+
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+training:
+  epochs: 2
+  batch_size: 2
+  grad_accum: 4
+  lr: 5.0e-4
+  warmup_ratio: 0.1
+  logging_steps: 2
+  save_strategy: epoch
+
+data:
+  train: data/sft_train.jsonl
+  val: data/sft_val.jsonl
+
+output:
+  dir: outputs/sft_06b
+  artifact_dir: outputs/sft_06b/artifacts

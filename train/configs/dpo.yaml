@@ -1,0 +1,26 @@
+# DPO 配置。sft_adapter 指向 SFT 产物，DPO 从它继续训练。
+model:
+  name: ${MODEL_DIR}/Qwen3-8B
+  sft_adapter: outputs/sft_8b
+  max_length: 2048
+
+dpo:
+  beta: 0.1
+  loss_type: sigmoid
+
+training:
+  epochs: 1
+  batch_size: 1
+  grad_accum: 8
+  lr: 5.0e-5
+  warmup_ratio: 0.1
+  logging_steps: 5
+  save_strategy: epoch
+
+data:
+  train: data/preference.jsonl
+  val: data/preference.jsonl
+
+output:
+  dir: outputs/dpo_8b
+  artifact_dir: outputs/dpo_8b/artifacts

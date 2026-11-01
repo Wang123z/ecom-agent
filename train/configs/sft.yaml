@@ -1,0 +1,27 @@
+# 8B 主配置。模型路径从 .env 的 MODEL_DIR 取，本地与云端各写一份。
+model:
+  name: ${MODEL_DIR}/Qwen3-8B
+  max_length: 2048
+
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+training:
+  epochs: 3
+  batch_size: 1
+  grad_accum: 8
+  lr: 2.0e-4
+  warmup_ratio: 0.1
+  logging_steps: 5
+  save_strategy: epoch
+
+data:
+  train: data/sft_train.jsonl
+  val: data/sft_val.jsonl
+
+output:
+  dir: outputs/sft_8b
+  artifact_dir: outputs/sft_8b/artifacts

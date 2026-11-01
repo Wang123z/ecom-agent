@@ -1,0 +1,8 @@
+{"turns":["我要退款"],"expect_intent":"refund","note":"缺订单号，应追问"}
+{"turns":["我要退款","O10001"],"expect_intent":"refund","note":"多轮补参后走退款"}
+{"turns":["我的快递到哪了","O10001"],"expect_intent":"order","note":"查物流"}
+{"turns":["我要投诉你们"],"expect_intent":"handoff","note":"投诉转人工"}
+{"turns":["你好"],"expect_intent":"chat","note":"闲聊"}
+{"turns":["退货要几天到账"],"expect_intent":"rag","note":"政策问答，不该走工具"}
+{"turns":["这个能退款吗"],"expect_intent":"rag","note":"问政策不是办事"}
+{"turns":["我要退款，订单 O10001"],"expect_intent":"refund","note":"退款优先于订单"}

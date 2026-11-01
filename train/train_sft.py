@@ -66,12 +66,15 @@ def dry_run(cfg: dict) -> None:
     train_rows = [to_messages(r) for r in load_jsonl(resolve_path(cfg["data"]["train"]))]
     val_rows = [to_messages(r) for r in load_jsonl(resolve_path(cfg["data"]["val"]))]
 
-    lengths = sorted(
-        len(tok.apply_chat_template(r["messages"], tokenize=True, add_generation_prompt=False))
-        for r in train_rows[:200]
-    )
+    # 先渲染成文本再分词：tokenize=True 在新版 transformers 返回 dict，len() 会得到 2
+    def token_len(messages: list) -> int:
+        text = tok.apply_chat_template(messages, tokenize=False,
+                                       add_generation_prompt=False, enable_thinking=False)
+        return len(tok(text)["input_ids"])
+
+    lengths = sorted(token_len(r["messages"]) for r in train_rows[:200])
     sample = tok.apply_chat_template(train_rows[0]["messages"], tokenize=False,
-                                     add_generation_prompt=False)
+                                     add_generation_prompt=False, enable_thinking=False)
 
     print(json.dumps({
         "train": len(train_rows),
@@ -82,6 +85,7 @@ def dry_run(cfg: dict) -> None:
         "max_length": cfg["model"]["max_length"],
         "over_limit": sum(1 for n in lengths if n > cfg["model"]["max_length"]),
         "has_system": train_rows[0]["messages"][0]["role"] == "system",
+        "has_think": "<think>" in sample,
         "sample_prompt": sample[:300],
     }, ensure_ascii=False, indent=2))
 
@@ -132,6 +136,8 @@ def build_trainer(cfg: dict, out_dir: Path):
         max_length=cfg["model"]["max_length"],
         bf16=precision["bf16"], fp16=precision["fp16"],
         remove_unused_columns=False,
+        # 数据里没有推理过程，关掉 Qwen3 的思考块，避免训练出空的 <think>
+        chat_template_kwargs={"enable_thinking": False},
     )
     allowed = set(inspect.signature(SFTConfig.__init__).parameters)
     args = SFTConfig(**{k: v for k, v in raw.items() if k in allowed})

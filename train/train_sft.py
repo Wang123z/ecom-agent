@@ -16,10 +16,21 @@ from app import config
 
 
 def load_config(path: str) -> dict:
-    """读 YAML，支持 ${VAR} 引用环境变量（模型路径按环境切换）。"""
+    """读 YAML，支持 ${VAR} 引用环境变量（模型路径按环境切换）。
+
+    取值顺序：环境变量 → app.config 里的同名配置 → 报错。
+    找不到时明确报错，避免把 ${MODEL_DIR} 原样传给 transformers。
+    """
+
+    def substitute(match):
+        key = match.group(1)
+        value = os.getenv(key) or getattr(config, key, None)
+        if value is None:
+            raise ValueError(f"配置里的 ${{{key}}} 找不到对应值，请在 .env 里设置 {key}")
+        return str(value)
+
     raw = Path(path).read_text(encoding="utf-8")
-    raw = re.sub(r"\$\{(\w+)\}", lambda m: os.getenv(m.group(1), m.group(0)), raw)
-    return yaml.safe_load(raw)
+    return yaml.safe_load(re.sub(r"\$\{(\w+)\}", substitute, raw))
 
 
 def load_jsonl(path: Path) -> list:
@@ -45,9 +56,13 @@ def build_dataset(cfg: dict, split: str):
 
 def dry_run(cfg: dict) -> None:
     """不训练：检查数据格式、chat template、token 长度分布。"""
+    model_path = cfg["model"]["name"]
+    if not Path(model_path).exists():
+        raise FileNotFoundError(f"模型目录不存在: {model_path}\n请检查 .env 里的 MODEL_DIR 是否指向模型所在目录")
+
     from transformers import AutoTokenizer
 
-    tok = AutoTokenizer.from_pretrained(cfg["model"]["name"], trust_remote_code=True)
+    tok = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     train_rows = [to_messages(r) for r in load_jsonl(resolve_path(cfg["data"]["train"]))]
     val_rows = [to_messages(r) for r in load_jsonl(resolve_path(cfg["data"]["val"]))]
 

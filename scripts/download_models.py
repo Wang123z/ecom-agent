@@ -6,8 +6,6 @@
   python scripts/download_models.py --root /root/autodl-tmp/models
 """
 import argparse
-import subprocess
-import sys
 from pathlib import Path
 
 MODELS = {
@@ -45,13 +43,12 @@ def main() -> None:
             print(f"[ok]   {name} 已完整，跳过")
             continue
         print(f"[down] {name} -> {local}")
-        result = subprocess.run(
-            [sys.executable, "-m", "modelscope", "download",
-             "--model", MODELS[name], "--local_dir", str(local)],
-            check=False,
-        )
-        if result.returncode != 0:
-            print(f"[fail] {name} 下载失败，退出码 {result.returncode}")
+        try:
+            from modelscope import snapshot_download
+
+            snapshot_download(MODELS[name], local_dir=str(local))
+        except Exception as exc:
+            print(f"[fail] {name} 下载失败: {exc}")
             continue
         print(f"[done] {name} {'完整' if is_complete(local) else '仍不完整，请检查'}")
 

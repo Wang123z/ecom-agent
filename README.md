@@ -13,23 +13,29 @@ deploy/     部署：compose、vLLM 启动、压测
 data/       原始与处理后数据
 ```
 
-## 本地（Windows）
+## 运行环境
 
-```bash
-conda create -p ./.venv python=3.11 -y
-conda activate ./.venv
-pip install -r requirements-app.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-cp .env.example .env
-uvicorn app.main:app --port 8080
-```
-
-## 云端（AutoDL / Linux）
+**只有 AutoDL（Linux + CUDA）一个环境。** 本地 Windows 仅用于写代码，不参与运行。
 
 ```bash
 source /etc/network_turbo
 git clone <repo> && cd ecom-agent
-cp .env.example .env      # 填 MODEL_DIR / LLM_BASE_URL 等
+cp .env.example .env      # 填 MODEL_DIR / LLM_BASE_URL
 bash setup.sh             # 装 vllm + 训练依赖 + 检查模型
+python -m pytest tests -q
+```
+
+启动基础设施（Milvus + MySQL + Redis）：
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d milvus mysql redis
+```
+
+启动模型服务与压测：
+
+```bash
+PORT=6006 bash deploy/serve.sh outputs/sft_8b
+python -m deploy.bench --base-url http://localhost:6006/v1
 ```
 
 ## 依赖分两份

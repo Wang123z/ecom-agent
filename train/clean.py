@@ -75,6 +75,16 @@ def load_raw(path: Path) -> list:
     return rows
 
 
+def to_qa(row: dict) -> dict:
+    """兼容两种输入：本项目格式 {question,answer} 与 ModelScope 的 {messages}。"""
+    if "messages" not in row:
+        return row
+    msgs = [m for m in row["messages"] if m.get("role") in ("user", "assistant")]
+    if len(msgs) < 2:
+        return {}
+    return {"question": msgs[0].get("content", ""), "answer": msgs[-1].get("content", "")}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", default=str(config.DATA_DIR / "faq_raw.jsonl"))
@@ -86,11 +96,15 @@ def main() -> None:
     parser.add_argument("--sim-backend", choices=["bigram", "bge"], default="bigram",
                         help="bigram 只能合并字面相近的；bge 需要 sentence-transformers")
     parser.add_argument("--val-ratio", type=float, default=0.2)
+    parser.add_argument("--keywords", default="",
+                        help="逗号分隔，命中任一才保留；用于从通用客服语料里筛售后子集")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    rows = load_raw(Path(args.input))
+    rows = [to_qa(r) for r in load_raw(Path(args.input))]
+    rows = [r for r in rows if r]
     raw_count = len(rows)
+    keywords = [k.strip() for k in args.keywords.split(",") if k.strip()]
 
     # 1. 标准化 + 低价值过滤
     kept = []
@@ -98,6 +112,8 @@ def main() -> None:
         q = clean_text(row.get("question", ""))
         a = clean_text(row.get("answer", ""))
         if len(q) < args.min_question or len(a) < args.min_answer:
+            continue
+        if keywords and not any(k in q for k in keywords):
             continue
         kept.append({"id": row.get("id") or dedup_key(q)[:8], "question": q,
                      "answer": a, "category": row.get("category", "")})

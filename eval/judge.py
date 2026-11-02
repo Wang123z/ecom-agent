@@ -2,10 +2,27 @@
 
 rubric 里明确写了「允许什么、禁止什么」，比只给「1-5 分」稳定得多。
 裁判只输出 JSON，解析失败按 0 分处理并记入 failed 列表。
+
+裁判模型必须与生成模型不同源（配置 JUDGE_*），否则是自评自测。
 """
 import json
+import re
 
-from app.infra import llm
+from app import config
+
+_client = None
+
+
+def _client_instance():
+    global _client
+    if _client is None:
+        if not config.JUDGE_BASE_URL:
+            raise RuntimeError("JUDGE_BASE_URL 未配置：裁判模型必须与生成模型不同源")
+        from openai import OpenAI
+
+        _client = OpenAI(base_url=config.JUDGE_BASE_URL,
+                         api_key=config.JUDGE_API_KEY or "not-needed")
+    return _client
 
 JUDGE_PROMPT = """你是电商客服质检评审员。评估下面这条客服回复是否适合真实电商场景。
 
@@ -29,6 +46,7 @@ FIELDS = ("accuracy", "auto_resolve", "closure", "hallucination")
 
 
 def parse_json(text: str) -> dict:
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S)   # 裁判若是思考模型，先剥思考块
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
         return {}
@@ -49,8 +67,12 @@ def normalize(raw: dict) -> dict:
 
 def judge_one(query: str, answer: str, reference: str = "") -> dict:
     prompt = JUDGE_PROMPT.format(query=query, answer=answer, reference=reference or "无")
-    raw = llm.chat([{"role": "user", "content": prompt}], temperature=0.0, max_tokens=120)
-    return normalize(parse_json(raw))
+    resp = _client_instance().chat.completions.create(
+        model=config.JUDGE_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0, max_tokens=200,
+    )
+    return normalize(parse_json(resp.choices[0].message.content or ""))
 
 
 def summarize(results: list) -> dict:

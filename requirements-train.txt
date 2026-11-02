@@ -13,3 +13,9 @@ modelscope==1.28.0
 # 云端本地 embedding / rerank（复用 vllm 装好的 torch）
 sentence-transformers==6.2.0
 FlagEmbedding==1.3.5
+
+# 画 loss 曲线
+matplotlib>=3.8
+
+# LLaMA-Factory 微调框架（消融实验用）
+# 装法见 docs/训练记录.md：pip install llamafactory

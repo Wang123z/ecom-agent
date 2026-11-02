@@ -19,6 +19,11 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:8000/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "not-needed")
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-8b")
 
+# ---- 裁判模型：必须与生成模型不同源，避免自评自测 ----
+JUDGE_BASE_URL = os.getenv("JUDGE_BASE_URL", "")
+JUDGE_API_KEY = os.getenv("JUDGE_API_KEY", "")
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", "qwen3.8-flash")
+
 # ---- 向量与重排：填本地模型路径，留空则走 API ----
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "")
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1024"))

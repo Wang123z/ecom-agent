@@ -1,0 +1,44 @@
+### LLaMA-Factory SFT 配置：Qwen3-8B + LoRA
+### 用法 llamafactory-cli train train/factory/sft_lora.yaml
+### 消融时改 lora_rank / lora_target，输出目录用 OUTPUT_TAG 区分
+
+### model
+model_name_or_path: /root/autodl-tmp/models/Qwen3-8B
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: q_proj,v_proj
+
+### dataset
+dataset: ecom_sft
+dataset_dir: train/factory
+template: qwen3
+cutoff_len: 2048
+max_samples: 100000
+preprocessing_num_workers: 8
+overwrite_cache: true
+
+### output
+output_dir: outputs/factory/sft_rank16_qv
+logging_steps: 10
+save_steps: 200
+save_total_limit: 2
+plot_loss: true
+overwrite_output_dir: true
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 2.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+gradient_checkpointing: true
+report_to: none

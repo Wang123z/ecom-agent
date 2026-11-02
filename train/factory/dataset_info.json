@@ -1,0 +1,19 @@
+{
+  "ecom_sft": {
+    "file_name": "sft.jsonl",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations"
+    }
+  },
+  "ecom_dpo": {
+    "file_name": "dpo.jsonl",
+    "formatting": "sharegpt",
+    "ranking": true,
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  }
+}

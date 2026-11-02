@@ -165,9 +165,25 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="train/configs/sft.yaml")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--lora-rank", type=int, default=0, help="覆盖配置里的 rank")
+    parser.add_argument("--lora-targets", default="", help="逗号分隔，覆盖 target_modules；all 表示全部线性层")
+    parser.add_argument("--tag", default="", help="输出目录后缀，消融实验用来区分")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    if args.lora_rank:
+        cfg["lora"]["rank"] = args.lora_rank
+        cfg["lora"]["alpha"] = args.lora_rank * 2
+    if args.lora_targets:
+        if args.lora_targets == "all":
+            cfg["lora"]["targets"] = ["q_proj", "k_proj", "v_proj", "o_proj",
+                                      "gate_proj", "up_proj", "down_proj"]
+        else:
+            cfg["lora"]["targets"] = [t.strip() for t in args.lora_targets.split(",")]
+    if args.tag:
+        cfg["output"]["dir"] = f"{cfg['output']['dir']}_{args.tag}"
+        cfg["output"]["artifact_dir"] = f"{cfg['output']['artifact_dir']}_{args.tag}"
+
     if args.dry_run:
         dry_run(cfg)
         return

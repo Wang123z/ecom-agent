@@ -99,9 +99,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="train/configs/dpo.yaml")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--beta", type=float, default=0.0, help="覆盖配置里的 pref_beta")
+    parser.add_argument("--tag", default="", help="输出目录后缀，消融实验用来区分")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    if args.beta:
+        cfg["dpo"]["beta"] = args.beta
+    if args.tag:
+        cfg["output"]["dir"] = f"{cfg['output']['dir']}_{args.tag}"
+        cfg["output"]["artifact_dir"] = f"{cfg['output']['artifact_dir']}_{args.tag}"
 
     if args.dry_run:
         pairs = load_pairs(resolve_path(cfg["data"]["train"]))

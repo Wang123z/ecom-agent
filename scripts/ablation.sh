@@ -9,32 +9,27 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-SFT_CFG=train/factory/sft_lora.yaml
-DPO_CFG=train/factory/dpo_lora.yaml
-SFT_BASE=outputs/factory/sft_rank16_qvko
-
 run_sft() {
-  local tag="$1" rank="$2" target="$3"
-  echo "===== SFT $tag (rank=$rank target=$target)"
-  llamafactory-cli train "$SFT_CFG" \
-    lora_rank="$rank" lora_alpha="$((rank * 2))" lora_target="$target" \
-    output_dir="outputs/factory/sft_$tag"
+  local tag="$1" rank="$2" targets="$3"
+  echo "===== SFT $tag (rank=$rank targets=$targets)"
+  python -m train.train_sft --config train/configs/sft.yaml \
+    --lora-rank "$rank" --lora-targets "$targets" --tag "$tag"
 }
 
 run_dpo() {
   local beta="$1"
   echo "===== DPO beta=$beta"
-  llamafactory-cli train "$DPO_CFG" \
-    pref_beta="$beta" output_dir="outputs/factory/dpo_beta$beta"
+  python -m train.train_dpo --config train/configs/dpo.yaml \
+    --beta "$beta" --tag "beta$beta"
 }
 
 case "${1:-all}" in
   sft)
-    run_sft rank8_qv         8  "q_proj,v_proj"
-    run_sft rank16_qv       16  "q_proj,v_proj"
-    run_sft rank32_qv       32  "q_proj,v_proj"
-    run_sft rank16_qvko     16  "q_proj,k_proj,v_proj,o_proj"
-    run_sft rank16_all      16  "all"
+    run_sft rank8_qv      8  "q_proj,v_proj"
+    run_sft rank16_qv    16  "q_proj,v_proj"
+    run_sft rank32_qv    32  "q_proj,v_proj"
+    run_sft rank16_qvko  16  "q_proj,k_proj,v_proj,o_proj"
+    run_sft rank16_all   16  "all"
     ;;
   dpo)
     for b in 0.05 0.1 0.3; do run_dpo "$b"; done
@@ -51,4 +46,4 @@ esac
 
 echo ""
 echo "===== 跑完，画 loss 曲线"
-python -m scripts.plot_loss --root outputs/factory
+python -m scripts.plot_loss --root outputs

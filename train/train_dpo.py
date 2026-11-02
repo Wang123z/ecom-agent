@@ -60,9 +60,9 @@ def build_trainer(cfg: dict, out_dir: Path):
         cfg["model"]["name"], torch_dtype=precision["dtype"],
         device_map="auto" if torch.cuda.is_available() else None, trust_remote_code=True,
     )
+    # ref adapter 由 DPOTrainer 自动创建（ref_model=None + PeftModel 时）
     model = PeftModel.from_pretrained(base, str(resolve_path(cfg["model"]["sft_adapter"])),
                                       adapter_name="default", is_trainable=True)
-    clone_adapter(model, "default", "ref")
     model.set_adapter("default")
     model.config.use_cache = False
 

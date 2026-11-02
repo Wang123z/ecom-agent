@@ -124,11 +124,14 @@ def main() -> None:
 
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", encoding="utf-8") as f:
-        for p in pairs:
-            f.write(json.dumps(p, ensure_ascii=False) + "\n")
-    print(json.dumps({"pairs": len(pairs), "skipped": skipped, "output": str(out)},
-                     ensure_ascii=False, indent=2))
+    split = max(1, int(len(pairs) * 0.1))
+    val, train = pairs[:split], pairs[split:]
+    for path, rows in ((out, train), (out.with_name(out.stem + "_val.jsonl"), val)):
+        with path.open("w", encoding="utf-8") as f:
+            for p in rows:
+                f.write(json.dumps(p, ensure_ascii=False) + "\n")
+    print(json.dumps({"train": len(train), "val": len(val), "skipped": skipped,
+                      "output": str(out)}, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

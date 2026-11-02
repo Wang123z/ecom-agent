@@ -22,8 +22,10 @@ ARGS=(
 )
 
 if [ -n "$ADAPTER" ]; then
-  ARGS+=(--enable-lora --lora-modules "cs-lora=${ADAPTER}")
-  echo ">>> 挂载 LoRA: $ADAPTER"
+  # vLLM 默认 max_lora_rank=16，rank 更大的 adapter 必须显式放开上限
+  ARGS+=(--enable-lora --max-lora-rank "${MAX_LORA_RANK:-32}"
+         --lora-modules "cs-lora=${ADAPTER}")
+  echo ">>> 挂载 LoRA: $ADAPTER (max_rank=${MAX_LORA_RANK:-32})"
 fi
 
 echo ">>> 模型: $MODEL  端口: $PORT"

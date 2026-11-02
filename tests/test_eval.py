@@ -78,11 +78,7 @@ def test_judge_summarize():
 
 
 # ---------- 业务集 ----------
-def test_business_suite_all_pass(monkeypatch):
-    # 路由兜底会调模型；测试里固定成 rag，避免每条都等超时
-    from app.core import graph
-
-    monkeypatch.setattr(graph, "_model_intent", lambda q: "rag")
+def test_business_suite_all_pass():
     from eval.run_all import run_business
 
     result = run_business()

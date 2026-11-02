@@ -33,17 +33,16 @@ def test_extract_order_id_variants():
     ("你好", "chat"),
 ])
 def test_classify(query, expected):
-    # allow_model=False：只测规则层，不连模型（否则每个 case 都要等超时）
-    assert g.classify(query, allow_model=False) == expected
+    assert g.classify(query) == expected
 
 
-def test_classify_model_fallback(monkeypatch):
-    """规则判不出来时交给模型；模型挂了退回 rag。"""
-    monkeypatch.setattr(g, "_model_intent", lambda q: "order")
-    assert g.classify("东西啥时候能到") == "order"
-
-    monkeypatch.setattr(g, "_model_intent", lambda q: "rag")
-    assert g.classify("东西啥时候能到") == "rag"
+def test_classify_weak_word_needs_action():
+    """弱领域词单独出现是问政策，配动作词才是办事。"""
+    assert g.classify("物流三天没更新怎么办") == "rag"
+    assert g.classify("物流停了一周怎么办") == "rag"
+    assert g.classify("发货要多久") == "rag"
+    assert g.classify("我的快递到哪了") == "order"          # 强查件词
+    assert g.classify("帮我查下物流") == "order"            # 弱词 + 动作词
 
 
 def test_route_asks_for_order_id():

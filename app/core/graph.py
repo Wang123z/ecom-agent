@@ -26,11 +26,6 @@ _REFUND_WORDS = ("退款", "退货", "换货", "退钱", "售后", "价保", "�
 _ACTION_WORDS = ("我要", "帮我", "申请", "给我", "想退", "要退", "查一下", "查查")
 _CHAT_WORDS = ("你好", "在吗", "谢谢", "你是谁", "早上好", "晚上好")
 
-INTENT_PROMPT = """判断用户意图，只输出一个词，不要解释：
-rag=问政策/流程/时效，order=查订单或物流进度，refund=要申请退款退货，handoff=投诉或转人工，chat=闲聊
-用户：{query}
-意图："""
-
 SYSTEM_PROMPT = (
     "你是电商售后客服。只根据【资料】回答，资料里没有的不要编造，"
     "涉及订单状态、物流节点、退款进度这类实时信息时，明确说明需要查询订单。\n"
@@ -48,31 +43,20 @@ def extract_order_id(text: str) -> str:
     return (m.group(1) or m.group(2) or "").upper()
 
 
-def _model_intent(query: str) -> str:
-    """模型兜底：只输出一个词，调用失败退回 rag。"""
-    try:
-        out = llm.chat([{"role": "user", "content": INTENT_PROMPT.format(query=query)}],
-                       temperature=0.0, max_tokens=8).strip().lower()
-    except Exception:
-        return "rag"
-    for name in ("handoff", "refund", "order", "chat", "rag"):
-        if name in out:
-            return name
-    return "rag"
+def classify(query: str, allow_model: bool = False) -> str:
+    """规则判断意图。
 
+    强信号（订单号、投诉词、强查件词）直接定；
+    弱领域词必须配动作词才判 order——「物流三天没更新怎么办」问的是政策，
+    「我的快递到哪了」问的是查件，同一个「物流」两种意图。
 
-def classify(query: str, allow_model: bool = True) -> str:
-    """规则优先，模糊时模型兜底。
+    不用模型兜底：cs-lora 被 SFT 成客服助手后，看到「退货」「假货」
+    就倾向判成办事分支，分类准确率反而不如规则（实测 11/20 vs 16/20）。
 
-    强信号（订单号、投诉词、强查件词）直接定意图；
-    只命中弱领域词时规则不可靠——「物流三天没更新怎么办」问的是政策，
-    「我的快递到哪了」问的是查件，同一个「物流」两种意图，只能交给模型判断。
-
-    退款/退货优先于订单：用户说「我要退款，订单 O10001」要走退款，不能被订单抢走。
+    退款/退货优先于订单：用户说「我要退款，订单 O10001」要走退款。
     """
     if any(w in query for w in _HANDOFF_WORDS):
         return "handoff"
-    # 退款优先于订单：「我要退款 O10001」是退款，不能被订单号抢走
     if any(w in query for w in _REFUND_WORDS) and any(w in query for w in _ACTION_WORDS):
         return "refund"
     if any(w in query for w in _ORDER_STRONG):
@@ -83,7 +67,7 @@ def classify(query: str, allow_model: bool = True) -> str:
         return "order"
     if any(w in query for w in _CHAT_WORDS):
         return "chat"
-    return _model_intent(query) if allow_model else "rag"
+    return "rag"
 
 
 # ---------- 节点 ----------

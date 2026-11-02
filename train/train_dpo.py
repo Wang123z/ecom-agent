@@ -61,9 +61,9 @@ def build_trainer(cfg: dict, out_dir: Path):
         device_map="auto" if torch.cuda.is_available() else None, trust_remote_code=True,
     )
     model = PeftModel.from_pretrained(base, str(resolve_path(cfg["model"]["sft_adapter"])),
-                                      adapter_name="policy", is_trainable=True)
-    clone_adapter(model, "policy", "ref")
-    model.set_adapter("policy")
+                                      adapter_name="default", is_trainable=True)
+    clone_adapter(model, "default", "ref")
+    model.set_adapter("default")
     model.config.use_cache = False
 
     t, d = cfg["training"], cfg["dpo"]

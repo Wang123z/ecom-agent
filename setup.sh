@@ -32,7 +32,14 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
+echo "==> 生成训练数据（清洗 → 聚类 → SFT 样本）"
+python -m train.clean
+python -m train.cluster
+python -m train.build_sft
+
 echo "==> 跑单元测试"
 python -m pytest tests -q
 
-echo "==> 完成。启动服务：uvicorn app.main:app --host 0.0.0.0 --port 8080"
+echo "==> 完成。"
+echo "    建索引：python -m scripts.build_index"
+echo "    启动服务：uvicorn app.main:app --host 0.0.0.0 --port 8080"

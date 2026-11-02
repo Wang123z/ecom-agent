@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app import config
-from app.api import auth, chat, orders, tickets
+from app.api import auth, chat, feedback, orders, tickets
 from app.infra.db import init_db
 
 
@@ -64,6 +64,7 @@ app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(orders.router, prefix="/api", tags=["orders"])
 app.include_router(tickets.router, prefix="/api", tags=["tickets"])
+app.include_router(feedback.router, prefix="/api", tags=["feedback"])
 
 
 @app.get("/health")

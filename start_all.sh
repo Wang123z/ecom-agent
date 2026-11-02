@@ -37,6 +37,12 @@ if ! mysqladmin -uroot -proot ping > /dev/null 2>&1; then
   wait_for "MySQL" "mysqladmin -uroot -proot ping"
 fi
 
+if ! redis-cli ping > /dev/null 2>&1; then
+  echo "==> 启动 Redis"
+  service redis-server start
+  wait_for "Redis" "redis-cli ping"
+fi
+
 if ! pgrep -f "etcd --data-dir" > /dev/null; then
   echo "==> 启动 etcd"
   cd "$MILVUS_DIR"

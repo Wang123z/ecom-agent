@@ -67,6 +67,20 @@ data: [DONE]
 [{"id":"T3F8A21C","kind":"refund","reason":"尺码不合适","status":"open","order_id":"O10001"}]
 ```
 
+## POST /api/feedback
+
+提交满意度反馈，落库供后续回流做偏好数据。
+
+```json
+{"query": "退货要几天到账", "answer": "1-3 个工作日", "satisfied": true, "trace_id": "a1b2c3"}
+```
+
+```json
+{"ok": true}
+```
+
+`trace_id` 取自响应头 `x-request-id`，用于把反馈关联到具体请求。
+
 ## GET /health
 
 无需鉴权。

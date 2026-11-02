@@ -9,8 +9,8 @@ Qwen3-8B 经 SFT + DPO 微调、vLLM 私有化部署，结合售后政策 RAG �
 
 | 环节 | 指标 | 结果 |
 |---|---|---|
-| **检索** | Hit@5 / MRR | **1.00 / 0.90** |
-| **生成** | 满意度 / 幻觉率 | **4.2 / 5　0.20** |
+| **检索** | Hit@5 / MRR | **0.98 / 0.872** |
+| **生成** | 满意度 / 幻觉率 | **4.60 / 5　0.075** |
 | **推理** | QPS @ 并发20 / P95 / 首 token | **7.81 / 2.5s / 151ms** |
 | **训练** | 4 轮迭代 eval_loss | 0.741 → **0.424** |
 | **工程** | 单元测试 | **85 passed** |
@@ -33,28 +33,41 @@ data/       原始与处理后数据
 
 **只有 AutoDL（Linux + CUDA）一个环境。** 本地 Windows 仅用于写代码，不参与运行。
 
+### 首次初始化（一次性）
+
 ```bash
 source /etc/network_turbo
 git clone <repo> && cd ecom-agent
 cp .env.example .env      # 填 MODEL_DIR / LLM_BASE_URL
-bash setup.sh             # 装 vllm + 训练依赖 + 检查模型
-python -m pytest tests -q
+bash setup.sh             # 装依赖 + 下模型 + 生成数据 + 跑测试
 ```
 
-启动基础设施：
+基础设施（Milvus / MySQL）在 AutoDL 上无 Docker，需二进制部署，见 `docs/训练记录.md` 第十节。
+
+### 每次启动
 
 ```bash
-# 有 docker 的机器
-docker compose -f deploy/docker-compose.yml up -d etcd minio milvus mysql redis
-
-# AutoDL 容器内没有 docker，用二进制部署（etcd + minio + milvus 三件套）
-# 详见 docs/训练记录.md 第十节
+bash start_all.sh
 ```
 
-启动模型服务与压测：
+按依赖顺序拉起 MySQL → etcd → minio → milvus → vLLM → app，每个都等到就绪才继续。已在跑的服务自动跳过，可重复执行。
+
+```
+==> 全栈就绪
+    Milvus   localhost:19530
+    vLLM     http://localhost:6006/v1
+    App      http://localhost:8080
+```
+
+切换 adapter：
 
 ```bash
-PORT=6006 bash deploy/serve.sh outputs/dpo_8b
+ADAPTER=outputs/sft_8b/checkpoint-308 bash start_all.sh
+```
+
+### 压测
+
+```bash
 python -m deploy.bench --base-url http://localhost:6006/v1
 ```
 

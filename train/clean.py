@@ -98,6 +98,10 @@ def main() -> None:
     parser.add_argument("--val-ratio", type=float, default=0.2)
     parser.add_argument("--keywords", default="",
                         help="逗号分隔，命中任一才保留；用于从通用客服语料里筛售后子集")
+    parser.add_argument("--max-samples", type=int, default=0,
+                        help="最终保留条数上限，0 表示不限制；用于对齐参考项目的数据规模")
+    parser.add_argument("--skip-similar", action="store_true",
+                        help="跳过 O(n²) 相似去重；数据量上万时必开，否则要跑几小时")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -131,17 +135,24 @@ def main() -> None:
 
     # 3. 相似去重：保留质量分更高的那条
     unique.sort(key=quality, reverse=True)
-    vectors = encode_all([row["question"] for row in unique], args.sim_backend)
-    final, kept_vectors = [], []
-    for row, vec in zip(unique, vectors):
-        if any(cos(vec, other, args.sim_backend) >= args.sim_threshold
-               for other in kept_vectors):
-            continue
-        final.append(row)
-        kept_vectors.append(vec)
+    if args.skip_similar:
+        final = unique
+    else:
+        vectors = encode_all([row["question"] for row in unique], args.sim_backend)
+        final, kept_vectors = [], []
+        for row, vec in zip(unique, vectors):
+            if any(cos(vec, other, args.sim_backend) >= args.sim_threshold
+                   for other in kept_vectors):
+                continue
+            final.append(row)
+            kept_vectors.append(vec)
     after_similar = len(final)
 
-    # 4. 切分
+    # 4. 截断到目标规模（按质量分保留最好的）
+    if args.max_samples and len(final) > args.max_samples:
+        final = final[:args.max_samples]
+
+    # 5. 切分
     random.Random(args.seed).shuffle(final)
     cut = int(len(final) * (1 - args.val_ratio))
     train, val = final[:cut], final[cut:]

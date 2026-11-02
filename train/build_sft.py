@@ -48,9 +48,10 @@ def main() -> None:
     samples = [to_sample(f"s_{i:05d}", [(r["question"], r["answer"])]) for i, r in enumerate(rows)]
 
     # 手写多轮：覆盖查单追问、退款补参、投诉升级等真实流程
-    multi_path = config.DATA_DIR / "multi_turn.jsonl"
-    for row in load_jsonl(multi_path):
-        samples.append(to_sample(row["id"], [(t["user"], t["assistant"]) for t in row["turns"]]))
+    # 规则生成多轮：按品类配对，把多轮比例拉到目标值
+    for name in ("multi_turn.jsonl", "multi_turn_gen.jsonl"):
+        for row in load_jsonl(config.DATA_DIR / name):
+            samples.append(to_sample(row["id"], [(t["user"], t["assistant"]) for t in row["turns"]]))
 
     # 聚类多轮：同簇内答案一致的才能拼，避免学到矛盾口径
     usable = [c for c in clusters if c["size"] >= 2 and not c.get("conflict")]

@@ -1,0 +1,20 @@
+{"id":"rg01","query":"退货要几天到账","expect_intent":"rag","expect_contains":"工作日","note":"政策问答"}
+{"id":"rg02","query":"吊牌剪了能退吗","expect_intent":"rag","expect_contains":"不支持","note":"少数派知识，曾被通用常识覆盖"}
+{"id":"rg03","query":"奶粉能退吗","expect_intent":"rag","expect_contains":"食品","note":"品类例外"}
+{"id":"rg04","query":"物流三天没更新怎么办","expect_intent":"rag","expect_contains":"48","note":"需说 48 小时"}
+{"id":"rg05","query":"物流停了一周怎么办","expect_intent":"rag","expect_contains":"异常","note":"需与三天区分"}
+{"id":"rg06","query":"我要退款","expect_intent":"refund","expect_contains":"订单号","note":"缺参追问"}
+{"id":"rg07","query":"我的快递到哪了","expect_intent":"order","expect_contains":"订单号","note":"缺参追问"}
+{"id":"rg08","query":"帮我查下订单 O10001","expect_intent":"order","expect_contains":"O10001","note":"带参查单"}
+{"id":"rg09","query":"我要投诉","expect_intent":"handoff","expect_contains":"工单","note":"建工单"}
+{"id":"rg10","query":"我要转人工","expect_intent":"handoff","expect_contains":"人工","note":"转人工"}
+{"id":"rg11","query":"你好","expect_intent":"chat","expect_contains":"","note":"闲聊"}
+{"id":"rg12","query":"在吗","expect_intent":"chat","expect_contains":"","note":"闲聊"}
+{"id":"rg13","query":"三包政策是什么","expect_intent":"rag","expect_contains":"包修","note":"三包定义"}
+{"id":"rg14","query":"买到假货怎么赔","expect_intent":"rag","expect_contains":"三","note":"退一赔三"}
+{"id":"rg15","query":"怎么开发票","expect_intent":"rag","expect_contains":"开票","note":"发票流程"}
+{"id":"rg16","query":"能开增值税专用发票吗","expect_intent":"rag","expect_contains":"专","note":"专票"}
+{"id":"rg17","query":"刚买就降价了能退差价吗","expect_intent":"rag","expect_contains":"价保","note":"价保"}
+{"id":"rg18","query":"优惠券能叠加使用吗","expect_intent":"rag","expect_contains":"叠加","note":"优惠规则"}
+{"id":"rg19","query":"帐篷漏水怎么办","expect_intent":"rag","expect_contains":"质量问题","note":"新品类，需给售后方案"}
+{"id":"rg20","query":"行车记录仪不工作怎么办","expect_intent":"rag","expect_contains":"性能故障","note":"新品类，需给三包"}

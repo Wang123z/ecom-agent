@@ -168,9 +168,12 @@ def main() -> None:
     parser.add_argument("--lora-rank", type=int, default=0, help="覆盖配置里的 rank")
     parser.add_argument("--lora-targets", default="", help="逗号分隔，覆盖 target_modules；all 表示全部线性层")
     parser.add_argument("--tag", default="", help="输出目录后缀，消融实验用来区分")
+    parser.add_argument("--epochs", type=float, default=0, help="覆盖配置里的 epochs")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    if args.epochs:
+        cfg["training"]["epochs"] = args.epochs
     if args.lora_rank:
         cfg["lora"]["rank"] = args.lora_rank
         cfg["lora"]["alpha"] = args.lora_rank * 2

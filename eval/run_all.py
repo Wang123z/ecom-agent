@@ -69,7 +69,31 @@ def run_business() -> dict:
             "detail": [d for d in detail if not d["ok"]]}
 
 
-SUITES = {"retrieval": run_retrieval, "generation": run_generation, "business": run_business}
+def run_regression() -> dict:
+    """回归集：每次改动必跑，同时校验意图与答案关键要素。"""
+    from app.core import graph
+
+    rows = load("regression")
+    failed = []
+    for row in rows:
+        out = graph.chat(row["query"], "eval", f"rg-{row['id']}")
+        answer = out.get("answer", "") or ""
+        ok_intent = out.get("intent") == row["expect_intent"]
+        ok_text = not row.get("expect_contains") or row["expect_contains"] in answer
+        if not (ok_intent and ok_text):
+            failed.append({
+                "id": row["id"], "query": row["query"],
+                "expect_intent": row["expect_intent"], "got_intent": out.get("intent"),
+                "missing": "" if ok_text else row["expect_contains"],
+            })
+    total = len(rows)
+    return {"total": total, "passed": total - len(failed),
+            "pass_rate": round((total - len(failed)) / total, 4) if total else 0.0,
+            "failed": failed}
+
+
+SUITES = {"retrieval": run_retrieval, "generation": run_generation,
+          "business": run_business, "regression": run_regression}
 
 
 def previous_report(out_dir: Path) -> dict:

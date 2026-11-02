@@ -33,7 +33,17 @@ def test_extract_order_id_variants():
     ("你好", "chat"),
 ])
 def test_classify(query, expected):
-    assert g.classify(query) == expected
+    # allow_model=False：只测规则层，不连模型（否则每个 case 都要等超时）
+    assert g.classify(query, allow_model=False) == expected
+
+
+def test_classify_model_fallback(monkeypatch):
+    """规则判不出来时交给模型；模型挂了退回 rag。"""
+    monkeypatch.setattr(g, "_model_intent", lambda q: "order")
+    assert g.classify("东西啥时候能到") == "order"
+
+    monkeypatch.setattr(g, "_model_intent", lambda q: "rag")
+    assert g.classify("东西啥时候能到") == "rag"
 
 
 def test_route_asks_for_order_id():

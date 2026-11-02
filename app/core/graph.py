@@ -18,10 +18,18 @@ _ORDER_RE = re.compile(r"(?:订单号?|单号)[:：\s]*([A-Za-z0-9]{4,})|([A-Z]\
 # 问「能不能退」「几天到账」是政策咨询，走检索；
 # 只有带动作词（我要/帮我/申请）才是要办事，走工具。
 _HANDOFF_WORDS = ("投诉", "人工", "举报", "差评")
-_ORDER_WORDS = ("物流", "快递", "到哪", "签收", "配送", "发货", "订单")
+# 强查件词：出现就一定是在查件，不可能是在问政策
+_ORDER_STRONG = ("到哪", "查件", "物流信息", "快递单号", "物流单号")
+# 弱领域词：既可能在问政策，也可能在查件，必须配动作词才判 order
+_ORDER_WEAK = ("物流", "快递", "签收", "配送", "发货", "订单")
 _REFUND_WORDS = ("退款", "退货", "换货", "退钱", "售后", "价保", "退差价")
 _ACTION_WORDS = ("我要", "帮我", "申请", "给我", "想退", "要退", "查一下", "查查")
 _CHAT_WORDS = ("你好", "在吗", "谢谢", "你是谁", "早上好", "晚上好")
+
+INTENT_PROMPT = """判断用户意图，只输出一个词，不要解释：
+rag=问政策/流程/时效，order=查订单或物流进度，refund=要申请退款退货，handoff=投诉或转人工，chat=闲聊
+用户：{query}
+意图："""
 
 SYSTEM_PROMPT = (
     "你是电商售后客服。只根据【资料】回答，资料里没有的不要编造，"
@@ -40,21 +48,42 @@ def extract_order_id(text: str) -> str:
     return (m.group(1) or m.group(2) or "").upper()
 
 
-def classify(query: str) -> str:
-    """规则优先：命中关键词就定意图，都不中走知识库检索。
+def _model_intent(query: str) -> str:
+    """模型兜底：只输出一个词，调用失败退回 rag。"""
+    try:
+        out = llm.chat([{"role": "user", "content": INTENT_PROMPT.format(query=query)}],
+                       temperature=0.0, max_tokens=8).strip().lower()
+    except Exception:
+        return "rag"
+    for name in ("handoff", "refund", "order", "chat", "rag"):
+        if name in out:
+            return name
+    return "rag"
 
-    退款/退货优先于订单：用户说「我要退款，订单 O10001」时要走退款，
-    不能被「订单」抢走。
+
+def classify(query: str, allow_model: bool = True) -> str:
+    """规则优先，模糊时模型兜底。
+
+    强信号（订单号、投诉词、强查件词）直接定意图；
+    只命中弱领域词时规则不可靠——「物流三天没更新怎么办」问的是政策，
+    「我的快递到哪了」问的是查件，同一个「物流」两种意图，只能交给模型判断。
+
+    退款/退货优先于订单：用户说「我要退款，订单 O10001」要走退款，不能被订单抢走。
     """
     if any(w in query for w in _HANDOFF_WORDS):
         return "handoff"
+    # 退款优先于订单：「我要退款 O10001」是退款，不能被订单号抢走
     if any(w in query for w in _REFUND_WORDS) and any(w in query for w in _ACTION_WORDS):
         return "refund"
-    if any(w in query for w in _ORDER_WORDS):
+    if any(w in query for w in _ORDER_STRONG):
+        return "order"
+    if extract_order_id(query):
+        return "order"
+    if any(w in query for w in _ORDER_WEAK) and any(w in query for w in _ACTION_WORDS):
         return "order"
     if any(w in query for w in _CHAT_WORDS):
         return "chat"
-    return "rag"
+    return _model_intent(query) if allow_model else "rag"
 
 
 # ---------- 节点 ----------
